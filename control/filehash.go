@@ -22,6 +22,7 @@ package control
 
 import (
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -36,6 +37,7 @@ type FileHash struct {
 	Hash      string
 	Size      int64
 	Filename  string
+	ByHash    string
 }
 
 func FileHashFromHasher(path string, hasher hashio.Hasher) FileHash {
@@ -51,7 +53,13 @@ type FileHashes []FileHash
 
 // {{{ Hash File implementations
 
-func (c FileHash) marshalControl() (string, error) {
+// ByHashPath returns the corresponding /by-hash/<algorithm>/<hash> path.
+// This function must only be used if the release supports AcquireByHash.
+func (c *FileHash) ByHashPath(path string) string {
+	return filepath.Dir(path) + "/by-hash/" + c.ByHash + "/" + c.Hash
+}
+
+func (c *FileHash) marshalControl() (string, error) {
 	return fmt.Sprintf("%s %d %s", c.Hash, c.Size, c.Filename), nil
 }
 
@@ -69,6 +77,12 @@ func (c *FileHash) unmarshalControl(algorithm, data string) error {
 		return err
 	}
 	c.Filename = vals[2]
+	switch algorithm {
+	case "sha256":
+		c.ByHash = "SHA256"
+	case "sha512":
+		c.ByHash = "SHA512"
+	}
 	return nil
 }
 
